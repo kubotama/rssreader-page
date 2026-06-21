@@ -4,7 +4,8 @@ export const INFORMATION_MESSAGES = { UNKNOWN_FEED: 'Unknown Feed', NO_TITLE: 'n
 
 export const ERROR_MESSAGES = {
   URL_REQUIRED: 'URL parameter is required',
-  FETCH_FAILED: (status: number) => `Failed to fetch RSS: ${status}`,
+  FETCH_FAILED: `Failed to fetch`,
+  FETCH_FAILED_STATUS: (status: number) => `Failed to fetch RSS: ${status}`,
   INVALID_FORMAT: 'Unsupported or invalid RSS/Atom format',
   INTERNAL_SERVER_ERROR: 'Internal Server Error',
 } as const

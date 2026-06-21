@@ -31,10 +31,29 @@ const mockAtomXml = `
   </entry>
 </feed>
 `
+// 1. 擬似的な複数リンク付きAtomのXMLを用意
+const mockAtomMultiLinkXml = `
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>複数リンクテスト</title>
+  <entry>
+    <id>tag:example.com,2026:2</id>
+    <title>複数リンクの記事</title>
+    <link rel="self" href="https://example.com/atom/self" />
+    <link rel="alternate" href="https://example.com/target-url" />
+    <link rel="replies" href="https://example.com/comments" />
+    <updated>2026-06-21T00:00:00Z</updated>
+  </entry>
+</feed>
+`
+
+const mockInvalidXml = `<not-rss-or-atom><message>Hello</message></not-rss-or-atom>`
 
 const RSS_URL = 'https://example.com/rss.xml'
 const ATOM_URL = 'https://example.com/atom.xml'
+const ATOM_MULTILINK_URL = 'https://example.com/atom-multilink.xml'
+const INVALID_FORMAT_URL = 'https://example.com/invalid-format.xml'
 const ERROR_URL = 'https://example.com/error.xml'
+const CRASH_URL = 'https://example.com/network-crash.xml'
 
 // 2. MSWによる外部API（fetch）のモック設定
 const mswServer = setupServer(
@@ -44,8 +63,17 @@ const mswServer = setupServer(
   http.get(ATOM_URL, () => {
     return HttpResponse.text(mockAtomXml, { status: HTTP_STATUS.OK })
   }),
+  http.get(ATOM_MULTILINK_URL, () => {
+    return HttpResponse.text(mockAtomMultiLinkXml, { status: HTTP_STATUS.OK })
+  }),
+  http.get(INVALID_FORMAT_URL, () => {
+    return HttpResponse.text(mockInvalidXml, { status: HTTP_STATUS.OK })
+  }),
   http.get(ERROR_URL, () => {
     return new HttpResponse(null, { status: HTTP_STATUS.INTERNAL_SERVER_ERROR })
+  }),
+  http.get(CRASH_URL, () => {
+    return HttpResponse.error()
   }),
 )
 
@@ -84,6 +112,24 @@ describe(`GET ${FETCH_RSS_URL}`, () => {
     expect(body.articles[0].url).toBe('https://example.com/atom1')
   })
 
+  it('正常系: Atom形式でlinkが配列の場合、適切なURLが抽出されること', async () => {
+    const res = await app.request(`${FETCH_RSS_URL}?url=${ATOM_MULTILINK_URL}`)
+    expect(res.status).toBe(200)
+
+    const body = await res.json()
+    // rel="alternate" の href が優先して抽出されているか検証
+    expect(body.articles[0].url).toBe('https://example.com/target-url')
+  })
+
+  it('異常系: RSS形式でもAtom形式でもない場合、400エラーを返すこと', async () => {
+    const res = await app.request(`${FETCH_RSS_URL}?url=${INVALID_FORMAT_URL}`)
+    expect(res.status).toBe(HTTP_STATUS.BAD_REQUEST)
+
+    const body = await res.json()
+    // 前のステップで定数化したエラーメッセージと一致するか検証
+    expect(body.error).toBe(ERROR_MESSAGES.INVALID_FORMAT)
+  })
+
   it('異常系: url パラメータがない場合に 400 エラーになること', async () => {
     const res = await app.request(`${FETCH_RSS_URL}`)
 
@@ -97,6 +143,14 @@ describe(`GET ${FETCH_RSS_URL}`, () => {
 
     expect(res.status).toBe(HTTP_STATUS.INTERNAL_SERVER_ERROR)
     const body = await res.json()
-    expect(body.error).toBe(ERROR_MESSAGES.FETCH_FAILED(HTTP_STATUS.INTERNAL_SERVER_ERROR))
+    expect(body.error).toBe(ERROR_MESSAGES.FETCH_FAILED_STATUS(HTTP_STATUS.INTERNAL_SERVER_ERROR))
+  })
+
+  it('異常系: フェッチ処理中に重大な例外が発生した場合、500エラーを返すこと', async () => {
+    const res = await app.request(`${FETCH_RSS_URL}?url=${CRASH_URL}`)
+    expect(res.status).toBe(HTTP_STATUS.INTERNAL_SERVER_ERROR)
+
+    const body = await res.json()
+    expect(body.error).toBe(ERROR_MESSAGES.FETCH_FAILED)
   })
 })
