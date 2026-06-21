@@ -25,7 +25,6 @@ function RssReader() {
 
   const handleFetch = async (e: Event) => {
     e.preventDefault()
-    console.log('ボタンがクリックされました！ URL:', url) // 👈 疎通確認用
     if (!url.trim()) return
 
     setLoading(true)
@@ -34,7 +33,6 @@ function RssReader() {
     setArticles([])
 
     try {
-      console.log(url)
       const response = await fetch(
         `${API_PATHS.ROOT}${API_PATHS.FETCH_RSS}?url=${encodeURIComponent(url)}`,
       )
