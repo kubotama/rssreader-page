@@ -5,6 +5,7 @@ export const renderer = jsxRenderer(({ children }) => {
     <html>
       <head>
         <link href="/static/style.css" rel="stylesheet" />
+        <script type="module" src="/src/index.tsx"></script>
       </head>
       <body>{children}</body>
     </html>

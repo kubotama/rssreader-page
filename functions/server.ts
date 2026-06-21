@@ -9,7 +9,7 @@ import {
   USER_AGENT,
 } from '../shared/constants'
 
-export const app = new Hono().basePath(API_PATHS.ROOT)
+const app = new Hono().basePath(API_PATHS.ROOT)
 
 const parser = new XMLParser({
   ignoreAttributes: false,
@@ -107,3 +107,5 @@ app.get(API_PATHS.FETCH_RSS, async (c) => {
     return c.json({ error: errorMessage }, 500)
   }
 })
+
+export default app
