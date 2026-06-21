@@ -46,9 +46,12 @@ const mockAtomMultiLinkXml = `
 </feed>
 `
 
+const mockInvalidXml = `<not-rss-or-atom><message>Hello</message></not-rss-or-atom>`
+
 const RSS_URL = 'https://example.com/rss.xml'
 const ATOM_URL = 'https://example.com/atom.xml'
 const ATOM_MULTILINT_URL = 'https://example.com/atom-multilink.xml'
+const INVALID_FORMAT_URL = 'https://example.com/invalid-format.xml'
 const ERROR_URL = 'https://example.com/error.xml'
 
 // 2. MSWによる外部API（fetch）のモック設定
@@ -61,6 +64,9 @@ const mswServer = setupServer(
   }),
   http.get(ATOM_MULTILINT_URL, () => {
     return HttpResponse.text(mockAtomMultiLinkXml, { status: HTTP_STATUS.OK })
+  }),
+  http.get(INVALID_FORMAT_URL, () => {
+    return HttpResponse.text(mockInvalidXml, { status: HTTP_STATUS.OK })
   }),
   http.get(ERROR_URL, () => {
     return new HttpResponse(null, { status: HTTP_STATUS.INTERNAL_SERVER_ERROR })
@@ -109,6 +115,15 @@ describe(`GET ${FETCH_RSS_URL}`, () => {
     const body = await res.json()
     // rel="alternate" の href が優先して抽出されているか検証
     expect(body.articles[0].url).toBe('https://example.com/target-url')
+  })
+
+  it('異常系: RSS形式でもAtom形式でもない場合、400エラーを返すこと', async () => {
+    const res = await app.request('/api/fetch-rss?url=https://example.com/invalid-format.xml')
+    expect(res.status).toBe(HTTP_STATUS.BAD_REQUEST)
+
+    const body = await res.json()
+    // 前のステップで定数化したエラーメッセージと一致するか検証
+    expect(body.error).toBe(ERROR_MESSAGES.INVALID_FORMAT)
   })
 
   it('異常系: url パラメータがない場合に 400 エラーになること', async () => {
