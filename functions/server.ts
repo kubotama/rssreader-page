@@ -1,27 +1,37 @@
 import { Hono } from 'hono'
 import { XMLParser } from 'fast-xml-parser'
 import { RawXMLStructure, Article } from '../shared/types'
+import {
+  API_PATHS,
+  ERROR_MESSAGES,
+  HTTP_STATUS,
+  INFORMATION_MESSAGES,
+  USER_AGENT,
+} from '../shared/constants'
 
-export const app = new Hono().basePath('/api')
+export const app = new Hono().basePath(API_PATHS.ROOT)
 
 const parser = new XMLParser({
   ignoreAttributes: false,
   attributeNamePrefix: '@_',
 })
 
-app.get('/fetch-rss', async (c) => {
+app.get(API_PATHS.FETCH_RSS, async (c) => {
   const feedUrl = c.req.query('url')
   if (!feedUrl) {
-    return c.json({ error: 'URL parameter is required' }, 400)
+    return c.json({ error: ERROR_MESSAGES.URL_REQUIRED }, HTTP_STATUS.BAD_REQUEST)
   }
 
   try {
-    const response = await globalThis.fetch(feedUrl, {
-      headers: { 'User-Agent': 'Cloudflare-RSS-Reader-Bot/1.0' },
+    const response = await fetch(feedUrl, {
+      headers: { 'User-Agent': USER_AGENT },
     })
 
     if (!response.ok) {
-      return c.json({ error: `Failed to fetch RSS: ${response.status}` }, 500)
+      return c.json(
+        { error: ERROR_MESSAGES.FETCH_FAILED(response.status) },
+        HTTP_STATUS.INTERNAL_SERVER_ERROR,
+      )
     }
 
     const xmlText = await response.text()
@@ -30,7 +40,7 @@ app.get('/fetch-rss', async (c) => {
     const jsonObj = parser.parse(xmlText) as RawXMLStructure
 
     let articles: Article[] = []
-    let feedTitle = 'Unknown Feed'
+    let feedTitle = INFORMATION_MESSAGES.UNKNOWN_FEED
 
     if (jsonObj.rss?.channel) {
       // --- RSS 2.0 の処理 ---
@@ -44,7 +54,7 @@ app.get('/fetch-rss', async (c) => {
         const guidText = typeof item.guid === 'object' ? item.guid?.['#text'] : item.guid
         return {
           id: guidText || item.link || '',
-          title: item.title || 'No Title',
+          title: item.title || INFORMATION_MESSAGES.NO_TITLE,
           url: item.link || '',
           pubDate: item.pubDate ? new Date(item.pubDate).getTime() : Date.now(),
           description: item.description || '',
@@ -76,14 +86,14 @@ app.get('/fetch-rss', async (c) => {
 
         return {
           id: entry.id || linkHref,
-          title: titleText || 'No Title',
+          title: titleText || INFORMATION_MESSAGES.NO_TITLE,
           url: linkHref,
           pubDate: entry.updated ? new Date(entry.updated).getTime() : Date.now(),
           description: '', // 簡略化のため空
         }
       })
     } else {
-      return c.json({ error: 'Unsupported or invalid RSS/Atom format' }, 400)
+      return c.json({ error: ERROR_MESSAGES.INVALID_FORMAT }, HTTP_STATUS.BAD_REQUEST)
     }
 
     // 型安全なオブジェクトを返す
@@ -92,9 +102,8 @@ app.get('/fetch-rss', async (c) => {
       articles: articles,
     })
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'Internal Server Error'
+    const errorMessage =
+      error instanceof Error ? error.message : ERROR_MESSAGES.INTERNAL_SERVER_ERROR
     return c.json({ error: errorMessage }, 500)
   }
 })
-
-// export default app
