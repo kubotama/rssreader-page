@@ -40,7 +40,7 @@ app.get(API_PATHS.FETCH_RSS, async (c) => {
     const jsonObj = parser.parse(xmlText) as RawXMLStructure
 
     let articles: Article[] = []
-    let feedTitle = INFORMATION_MESSAGES.UNKNOWN_FEED
+    let feedTitle: string = INFORMATION_MESSAGES.UNKNOWN_FEED
 
     if (jsonObj.rss?.channel) {
       // --- RSS 2.0 の処理 ---

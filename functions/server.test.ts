@@ -31,9 +31,24 @@ const mockAtomXml = `
   </entry>
 </feed>
 `
+// 1. 擬似的な複数リンク付きAtomのXMLを用意
+const mockAtomMultiLinkXml = `
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>複数リンクテスト</title>
+  <entry>
+    <id>tag:example.com,2026:2</id>
+    <title>複数リンクの記事</title>
+    <link rel="self" href="https://example.com/atom/self" />
+    <link rel="alternate" href="https://example.com/target-url" />
+    <link rel="replies" href="https://example.com/comments" />
+    <updated>2026-06-21T00:00:00Z</updated>
+  </entry>
+</feed>
+`
 
 const RSS_URL = 'https://example.com/rss.xml'
 const ATOM_URL = 'https://example.com/atom.xml'
+const ATOM_MULTILINT_URL = 'https://example.com/atom-multilink.xml'
 const ERROR_URL = 'https://example.com/error.xml'
 
 // 2. MSWによる外部API（fetch）のモック設定
@@ -43,6 +58,9 @@ const mswServer = setupServer(
   }),
   http.get(ATOM_URL, () => {
     return HttpResponse.text(mockAtomXml, { status: HTTP_STATUS.OK })
+  }),
+  http.get(ATOM_MULTILINT_URL, () => {
+    return HttpResponse.text(mockAtomMultiLinkXml, { status: HTTP_STATUS.OK })
   }),
   http.get(ERROR_URL, () => {
     return new HttpResponse(null, { status: HTTP_STATUS.INTERNAL_SERVER_ERROR })
@@ -82,6 +100,15 @@ describe(`GET ${FETCH_RSS_URL}`, () => {
     expect(body.articles).toHaveLength(1)
     expect(body.articles[0].title).toBe('Atom記事1')
     expect(body.articles[0].url).toBe('https://example.com/atom1')
+  })
+
+  it('正常系: Atom形式でlinkが配列の場合、適切なURLが抽出されること', async () => {
+    const res = await app.request(`${FETCH_RSS_URL}?url=${ATOM_MULTILINT_URL}`)
+    expect(res.status).toBe(200)
+
+    const body = await res.json()
+    // rel="alternate" の href が優先して抽出されているか検証
+    expect(body.articles[0].url).toBe('https://example.com/target-url')
   })
 
   it('異常系: url パラメータがない場合に 400 エラーになること', async () => {
