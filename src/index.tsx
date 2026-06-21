@@ -4,6 +4,14 @@ import { renderer } from './renderer'
 import { Article } from '../shared/types'
 
 import apiApp from '../functions/server'
+import {
+  API_PATHS,
+  APP_ROOT_ID,
+  BUTTON_TEXT,
+  ERROR_MESSAGES,
+  LABEL_TEXT,
+  PLACEHOLDER_TEXT,
+} from '../shared/constants'
 
 // ==========================================
 // 1. 共通のコンポーネント定義
@@ -27,17 +35,19 @@ function RssReader() {
 
     try {
       console.log(url)
-      const response = await fetch(`/api/fetch-rss?url=${encodeURIComponent(url)}`)
+      const response = await fetch(
+        `${API_PATHS.ROOT}${API_PATHS.FETCH_RSS}?url=${encodeURIComponent(url)}`,
+      )
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || `エラーが発生しました (Status: ${response.status})`)
+        throw new Error(data.error || `${ERROR_MESSAGES.FETCH_FAILED_STATUS(response.status)}`)
       }
 
       setFeedTitle(data.title)
       setArticles(data.articles || [])
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : '予期せぬエラーが発生しました'
+      const message = err instanceof Error ? err.message : ERROR_MESSAGES.UNEXPECTED_ERROR
       setError(message)
     } finally {
       setLoading(false)
@@ -45,7 +55,7 @@ function RssReader() {
   }
 
   return (
-    <div id="app-root" style={{ padding: '20px', fontFamily: 'sans-serif' }}>
+    <div id={APP_ROOT_ID} style={{ padding: '20px', fontFamily: 'sans-serif' }}>
       <h1>RSS Reader PoC</h1>
 
       <form onSubmit={handleFetch} style={{ marginBottom: '20px' }}>
@@ -53,17 +63,21 @@ function RssReader() {
           type="url"
           value={url}
           onInput={(e) => setUrl((e.target as HTMLInputElement).value)}
-          placeholder="https://example.com/rss.xml"
+          placeholder={PLACEHOLDER_TEXT.FEED_URL}
           required
           style={{ width: '400px', padding: '8px', marginRight: '10px' }}
         />
         <button type="submit" disabled={loading} style={{ padding: '8px 16px' }}>
-          {loading ? '読み込み中...' : 'フィード取得'}
+          {loading ? BUTTON_TEXT.LOADING : BUTTON_TEXT.GET_FEEDS}
         </button>
       </form>
 
       {error && <p style={{ color: 'red' }}>⚠️ {error}</p>}
-      {feedTitle && <h2>フィード名: {feedTitle}</h2>}
+      {feedTitle && (
+        <h2>
+          {LABEL_TEXT.FEED_NAME} {feedTitle}
+        </h2>
+      )}
 
       <ul>
         {articles.map((article) => (
@@ -93,7 +107,7 @@ function RssReader() {
 // ブラウザ環境（クライアントサイド）でのみ実行する処理
 if (typeof window !== 'undefined') {
   const { render } = await import('hono/jsx/dom')
-  const root = document.getElementById('app-root')
+  const root = document.getElementById(APP_ROOT_ID)
   if (root) {
     // サーバーが作った静的なHTMLの上に、動的なイベントハンドラを乗せる（ハイドレーション）
     render(<RssReader />, root.parentElement!)
