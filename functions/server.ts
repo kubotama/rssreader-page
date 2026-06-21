@@ -29,7 +29,7 @@ app.get(API_PATHS.FETCH_RSS, async (c) => {
 
     if (!response.ok) {
       return c.json(
-        { error: ERROR_MESSAGES.FETCH_FAILED(response.status) },
+        { error: ERROR_MESSAGES.FETCH_FAILED_STATUS(response.status) },
         HTTP_STATUS.INTERNAL_SERVER_ERROR,
       )
     }
