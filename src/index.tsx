@@ -38,11 +38,14 @@ function RssReader() {
       const response = await fetch(
         `${API_PATHS.ROOT}${API_PATHS.FETCH_RSS}?url=${encodeURIComponent(url)}`,
       )
-      const data = await response.json()
-
       if (!response.ok) {
-        throw new Error(data.error || `${ERROR_MESSAGES.FETCH_FAILED_STATUS(response.status)}`)
+        throw new Error(
+          (await response.json())?.error ||
+            `${ERROR_MESSAGES.FETCH_FAILED_STATUS(response.status)}`,
+        )
       }
+
+      const data = await response.json()
 
       setFeedTitle(data.title)
       setArticles(data.articles || [])
