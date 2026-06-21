@@ -7,7 +7,7 @@ import eslintConfigPrettier from 'eslint-config-prettier'
 export default tseslint.config(
   // 1. 対象外にするディレクトリを指定（従来の .eslintignore の役割）
   {
-    ignores: ['dist/**', '.cloudflare/**', 'node_modules/**'],
+    ignores: ['dist/**', '.cloudflare/**', 'node_modules/**', '.wrangler/**'],
   },
 
   // 2. ESLint と TypeScript-ESLint の推奨設定を適用
