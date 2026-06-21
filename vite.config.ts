@@ -8,7 +8,14 @@ export default defineConfig({
     build(),
     devServer({
       adapter,
-      entry: 'src/index.tsx'
-    })
-  ]
+      entry: 'src/index.tsx',
+    }),
+  ],
+  build: {
+    target: 'esnext', // または 'es2022'
+  },
+  // esbuild自体のターゲットも統一する場合は以下も追加（念のため）
+  esbuild: {
+    target: 'esnext',
+  },
 })

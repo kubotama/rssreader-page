@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest'
 import { setupServer } from 'msw/node'
 import { http, HttpResponse } from 'msw'
-import { app } from './server'
+import app from './server'
 import { API_PATHS, ERROR_MESSAGES, HTTP_STATUS } from '../shared/constants'
 
 // 1. 擬似的なテストデータ（XML）の用意
