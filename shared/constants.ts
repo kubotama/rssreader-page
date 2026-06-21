@@ -39,4 +39,4 @@ export const BUTTON_TEXT = {
 
 export const LABEL_TEXT = {
   FEED_NAME: 'フィード名:',
-}
+} as const
