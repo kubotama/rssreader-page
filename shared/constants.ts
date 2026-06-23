@@ -13,9 +13,10 @@ export const ERROR_MESSAGES = {
   UNEXPECTED_ERROR: 'Unexpected error',
 } as const
 
+export const API_ROOT = '/api'
+
 export const API_PATHS = {
-  ROOT: '/api',
-  FETCH_RSS: '/fetch-rss',
+  FETCH_RSS: `${API_ROOT}/fetch-rss`,
 } as const
 
 export const HTTP_STATUS = {
@@ -39,4 +40,8 @@ export const BUTTON_TEXT = {
 
 export const LABEL_TEXT = {
   FEED_NAME: 'フィード名:',
+} as const
+
+export const HEADER_TEXT = {
+  LABEL1: 'RSS Reader PoC',
 } as const
