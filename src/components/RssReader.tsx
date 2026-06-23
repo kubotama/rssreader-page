@@ -33,11 +33,21 @@ export const RssReader = () => {
 
     try {
       const response = await fetch(`${API_PATHS.FETCH_RSS}?url=${encodeURIComponent(currentUrl)}`)
-      const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || `${ERROR_MESSAGES.FETCH_FAILED} STATUS: ${response.status})}`)
+        let errorMessage = ERROR_MESSAGES.FETCH_FAILED_STATUS(response.status)
+        try {
+          const errorData = await response.json()
+          if (errorData?.error) {
+            errorMessage = errorData.error
+          }
+        } catch {
+          // JSONのパースに失敗した場合はデフォルトのエラーメッセージを使用
+        }
+        throw new Error(errorMessage)
       }
+
+      const data = await response.json()
 
       setFeedTitle(data.title)
       setArticles(data.articles || [])
