@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render } from 'hono/jsx/dom'
+import { screen } from '@testing-library/dom'
+import '@testing-library/jest-dom'
+import userEvent, { UserEvent } from '@testing-library/user-event'
 import { RssReader } from './RssReader'
 import {
   API_PATHS,
@@ -8,11 +11,13 @@ import {
   HEADER_TEXT,
   HTTP_STATUS,
   LABEL_TEXT,
+  PLACEHOLDER_TEXT,
 } from '../../shared/constants'
 import { MOCK_FEED_DATA, MOCK_FEED_URL } from '../../shared/fixtures'
 
 describe('RssReader Component', () => {
   let container: HTMLDivElement
+  let user: UserEvent
 
   beforeEach(() => {
     // 各テストの前にDOMをリセットし、テスト用の器（container）を用意する
@@ -20,22 +25,35 @@ describe('RssReader Component', () => {
     container = document.createElement('div')
     document.body.appendChild(container)
 
+    user = userEvent.setup()
+
     // グローバルな fetch のモックをリセット
     vi.restoreAllMocks()
     vi.unstubAllGlobals()
+
+    // user-event 内部でディスパッチされる Event オブジェクトが Hono の処理でエラーにならないよう、
+    // Event.prototype に空オブジェクトを返す detail プロパティを設定する
+    if (!('detail' in window.Event.prototype)) {
+      Object.defineProperty(window.Event.prototype, 'detail', {
+        get() {
+          return {}
+        },
+        configurable: true,
+      })
+    }
   })
 
   it('初期状態のレンダリングが正しく行われること', () => {
     render(<RssReader />, container)
 
     // タイトルが表示されているか確認
-    expect(container.querySelector('h1')?.textContent).toBe(HEADER_TEXT.LABEL1)
+    expect(screen.getByText(HEADER_TEXT.LABEL1)).toBeInTheDocument()
 
-    // 入力フォームとボタンが存在するか確認
-    const input = container.querySelector('input[type="url"]') as HTMLInputElement
-    const button = container.querySelector('button[type="submit"]')
-    expect(input).toBeTruthy()
-    expect(button?.textContent).toBe(BUTTON_TEXT.GET_FEEDS)
+    // 入力フォームが存在するか確認
+    expect(screen.getByPlaceholderText(PLACEHOLDER_TEXT.FEED_URL)).toBeInTheDocument()
+
+    // ボタンが存在するか確認
+    expect(screen.getByRole('button', { name: BUTTON_TEXT.GET_FEEDS })).toBeInTheDocument()
   })
 
   it('URLを入力して送信した際、APIが叩かれて記事一覧が描写されること', async () => {
@@ -51,35 +69,28 @@ describe('RssReader Component', () => {
     // 2. コンポーネントをレンダリング
     render(<RssReader />, container)
 
-    const input = container.querySelector('input[type="url"]') as HTMLInputElement
-    const form = container.querySelector('form') as HTMLFormElement
+    const input = screen.getByPlaceholderText(PLACEHOLDER_TEXT.FEED_URL)
+    const button = screen.getByRole('button', { name: BUTTON_TEXT.GET_FEEDS })
 
     // 3. フォームへの入力と送信をシミュレート
-    input.value = MOCK_FEED_URL
-    // inputイベントを発生させて要素に値を定着させる
-    input.dispatchEvent(new Event('input', { bubbles: true }))
+    await user.type(input, MOCK_FEED_URL)
 
     // submit イベントを発生させる
-    const submitEvent = new CustomEvent('submit', {
-      cancelable: true,
-      bubbles: true,
-      detail: {},
-    })
-    form.dispatchEvent(submitEvent)
+    await user.click(button)
 
     // 4. 非同期処理（fetchと状態更新）の完了を待つ
     // 💡 waitFor の中で、毎回最新のDOM要素を取得するように関数形式にする
+    // フィード名が表示されることを確認する
     await vi.waitFor(() => {
-      const feedTitle = container.querySelector('h2')
-      // undefined ではなく、要素が生成されてテキストが一致するまで何度も再試行してくれます
-      expect(feedTitle?.textContent).toBe(`${LABEL_TEXT.FEED_NAME} ${MOCK_FEED_DATA.title}`)
+      expect(
+        screen.getByText(`${LABEL_TEXT.FEED_NAME} ${MOCK_FEED_DATA.title}`),
+      ).toBeInTheDocument()
     })
 
     // 5. 記事が正しくリスト表示されているか検証
-    const articleLink = container.querySelector('ul li a') as HTMLAnchorElement
-    expect(articleLink).toBeTruthy()
-    expect(articleLink.textContent).toBe(MOCK_FEED_DATA.articles[0].title)
-    expect(articleLink.href).toBe(MOCK_FEED_DATA.articles[0].url)
+    const articleLink = screen.getByRole('link', { name: MOCK_FEED_DATA.articles[0].title })
+    expect(articleLink).toBeInTheDocument()
+    expect(articleLink).toHaveAttribute('href', MOCK_FEED_DATA.articles[0].url)
 
     // APIが正しいURLで叩かれたかも検証
     expect(fetchMock).toHaveBeenCalledWith(
@@ -100,23 +111,15 @@ describe('RssReader Component', () => {
 
     render(<RssReader />, container)
 
-    const input = container.querySelector('input[type="url"]') as HTMLInputElement
-    const form = container.querySelector('form') as HTMLFormElement
+    const input = screen.getByPlaceholderText(PLACEHOLDER_TEXT.FEED_URL)
+    const button = screen.getByRole('button', { name: BUTTON_TEXT.GET_FEEDS })
 
-    input.value = MOCK_FEED_URL
-    input.dispatchEvent(new Event('input', { bubbles: true }))
+    await user.type(input, MOCK_FEED_URL)
 
-    const submitEvent = new CustomEvent('submit', {
-      cancelable: true,
-      bubbles: true,
-      detail: {},
-    })
-    form.dispatchEvent(submitEvent)
+    await user.click(button)
 
-    // 💡 最新の HTML 構造を waitFor の中で取得してチェック
     await vi.waitFor(() => {
-      const currentHtml = container.innerHTML
-      expect(currentHtml).toContain(ERROR_MESSAGES.FETCH_FAILED)
+      expect(screen.getByText(ERROR_MESSAGES.FETCH_FAILED, { exact: false })).toBeInTheDocument()
     })
   })
 })
