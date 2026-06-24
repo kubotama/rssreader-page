@@ -49,8 +49,12 @@ export const RssReader = () => {
 
       const data = await response.json()
 
-      setFeedTitle(data.title)
-      setArticles(data.articles || [])
+      if (data && typeof data === 'object') {
+        setFeedTitle(data.title || '')
+        setArticles(Array.isArray(data.articles) ? data.articles : [])
+      } else {
+        throw new Error(ERROR_MESSAGES.INVALID_FORMAT)
+      }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : ERROR_MESSAGES.UNEXPECTED_ERROR
       setError(message)
