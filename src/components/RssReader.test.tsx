@@ -22,6 +22,7 @@ describe('RssReader Component', () => {
 
     // グローバルな fetch のモックをリセット
     vi.restoreAllMocks()
+    vi.unstubAllGlobals()
   })
 
   it('初期状態のレンダリングが正しく行われること', () => {
