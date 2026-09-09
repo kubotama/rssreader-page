@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "fast-xml-parser": "^5.8.0",
-    "hono": "^4.12.26"
+    "hono": "^4.13.7"
   },
   "devDependencies": {
     "@hono/vite-build": "^1.2.0",
